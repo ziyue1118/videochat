@@ -15,7 +15,7 @@ if (PeerConnection){
 }
 
   rtc.connect('ws:'+window.location.href.substring(window.location.protocol.length).split('#')[0]);
-
+  console.log(window.location.href.substring(window.location.protocol.length).split('#')[0]);
   rtc.on('add remote stream', function(stream, socketId) {
     console.log("ADDING REMOTE STREAM...");
     rtc.attachStream(stream, "remoteVideo");
