@@ -1,0 +1,54 @@
+#videoContainer {
+	background-color: #000000;
+	position: absolute;
+	margin: 0px auto;
+	/*-webkit-perspective: 1000;*/
+	width: 	522px;
+	height: 390px;
+	left: 	360px;
+	top: 	0px;
+
+}
+#local {
+	position: absolute;
+	width: 100%;
+	/*-webkit-transform: scale(-1, 1);*/
+	/*-webkit-backface-visibility: hidden;*/
+}
+#remote {
+	position: absolute;
+	width: 100%;
+
+	/*-webkit-transform: rotateY(180deg);*/
+	/*-webkit-backface-visibility: hidden;*/
+}
+#remoteVideo {
+	width: 100%;
+	opacity: 0;
+	-webkit-transition-property: opacity;
+	-webkit-transition-duration: 1s;
+}
+#localVideo {
+	width: 100%;
+	opacity: 0;
+	-webkit-transition-property: opacity;
+	-webkit-transition-duration: 1s;
+}
+#mini {
+	position: absolute;
+	height: 30%;
+	width: 30%;
+	bottom: 28px;
+	right: 4px;
+	/*-webkit-transform: rotateY(180deg);*/
+	/*-webkit-transform: scale(-1, 1);*/
+	/*opacity: 1.0;*/
+}
+
+#miniVideo {
+	width: 100%;
+	height: 100%;
+	opacity: 0;
+	-webkit-transition-property: opacity;
+	-webkit-transition-duration: 2s;
+}
