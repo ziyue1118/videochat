@@ -1,4 +1,4 @@
-var port = 5001;
+var port = process.env.PORT || 5001;
 var app = require('express')();
 var server = require('http').createServer(app);
 //var io = require('socket.io').listen(server);
