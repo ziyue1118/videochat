@@ -14,7 +14,7 @@ if (PeerConnection){
   });
 }
 
-  rtc.connect('ws://localhost:5001');
+  rtc.connect('ws:'+window.location.href.substring(window.location.protocol.length).split('#')[0]);
 
   rtc.on('add remote stream', function(stream, socketId) {
     console.log("ADDING REMOTE STREAM...");
