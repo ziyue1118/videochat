@@ -4,7 +4,7 @@ var localVideo  = document.getElementById('localVideo');
 var remoteVideo = document.getElementById('remoteVideo');
 var miniVideo   = document.getElementById('miniVideo');
 var container   = document.getElementById('videoContainer');
-var mediaConstraints = {"video": true};
+var mediaConstraints = {"video": true, "audio": true };
 // var socket = io.connect("http://localhost:5001");
 
 if (PeerConnection){
