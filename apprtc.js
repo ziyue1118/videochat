@@ -13,11 +13,29 @@
   var signalingReady = false;
   var msgQueue = [];
   // Set up audio and video regardless of what devices are present.
-  var sdpConstraints = {'mandatory': {
+  var sdpConstraints = {  'mandatory': {
                           'OfferToReceiveAudio': true,
                           'OfferToReceiveVideo': true }};
+  
   var isVideoMuted = false;
   var isAudioMuted = false;
+
+
+  var channelToken = 'AHRlWrrjbxS7eHxpKRGwmgALJAQbfWZjKoto4ihWJktLJZXfv_eQEu8W4vaSFqfhBushwuqZY6dn-KyPcyK6bigY9kaAwYY6gFrdFE-CjRNUjPoj5JqqZVQ';
+  var me = '86697681';
+  var roomKey = '52802443';
+  var roomLink = 'https://apprtc.appspot.com/?r=52802443';
+  var initiator = 0;
+  var pcConfig = {"iceServers": [{"url": "stun:stun.l.google.com:19302"}]};
+  var pcConstraints = {"optional": [{"DtlsSrtpKeyAgreement": true}]};
+  var offerConstraints = {"optional": [], "mandatory": {}};
+  var mediaConstraints = {"audio": true, "video": {"mandatory": {}, "optional": []}};
+  var turnUrl = 'https://computeengineondemand.appspot.com/turn?username=86697681&key=4080218913';
+  var stereo = false;
+
+  setTimeout(initialize, 1);
+
+
 
   function initialize() {
     console.log('Initializing; room=' + roomKey + '.');

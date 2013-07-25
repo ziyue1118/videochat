@@ -2,24 +2,25 @@
 <html>
 <head>
 	<link rel = "stylesheet" href = "main.css">
-
 </head>
 
 <body>
-	<div id = "videoContainer" >
+	<div id = "videoContainer">
 		<div id = "local">
 			<video id="localVideo" autoplay ></video>
 		</div>
 		<div id = "remote">
-			<video id="remoteVideo" autoplay></video>
-
+				<video id="remoteVideo" autoplay></video>
 			<div id = "mini">
 				<video id= "miniVideo" autoplay> </video>
 			</div>
 		</div>
 	</div>	
-	<script src = "webrtc.io.js"></script>
-	<script src = "main.js"></script>
+	<script src = "http://localhost:5001/socket.io/socket.io.js"></script>
+	<!--<script src = "webrtc.io.js"></script>
+	<script src = "main.js"></script>-->
+	<script src = "service.js"></script>
+	<script src = "adapter.js"></script>
 </body>
 
 </html>

@@ -1,7 +1,3 @@
-//CLIENT
-
- // Fallbacks for vendor-specific variables until the spec is finalized.
-
 var PeerConnection = window.PeerConnection || window.webkitPeerConnection00 || window.webkitRTCPeerConnection;
 var URL = window.URL || window.webkitURL || window.msURL || window.oURL;
 var getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;

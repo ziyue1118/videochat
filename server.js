@@ -1,49 +1,184 @@
-var WebSocketServer = require('websocket').server;
-var http = require('http');
-var clients = [];
 
-var server = http.createServer(function(request, response) {
-    // process HTTP request. Since we're writing just WebSockets server
-    // we don't have to implement anything.
-});
-server.listen(1337, function() {
-  console.log((new Date()) + " Server is listening on port 1337");
-});
+  <h1>WebRTC Demo using Socket.IO</h1>
+  <video id="webrtc-sourcevid" autoplay style="width: 320px; height: 240px; border: 1px solid black;"></video>
+  <button type="button" onclick="startVideo();">Start video</button>
+  <button type="button" onclick="stopVideo();">Stop video</button>
+  <video id="webrtc-remotevid" autoplay style="width: 320px; height: 240px; border: 1px solid black;"></video>
+  <button type="button" onclick="connect();">Connect</button>
+  <button type="button" onclick="hangUp();">Hang Up</button>
 
-// create the server
-wsServer = new WebSocketServer({
-    httpServer: server
-});
+  <p>Run a node.js server and adapt the address in the code.</p>
+  <script src="http://cdn.socket.io/stable/socket.io.js"></script>
+  <script>
+  // create socket
+  var socket = io.connect('localhost:1337/');
 
-function sendCallback(err) {
-    if (err) console.error("send() error: " + err);
-}
+  var sourcevid = document.getElementById('webrtc-sourcevid');
+  var remotevid = document.getElementById('webrtc-remotevid');
+  var localStream = null;
+  var peerConn = null;
+  var started = false;
+  var channelReady = false;
+  var mediaConstraints = {'mandatory': {
+                          'OfferToReceiveAudio':true, 
+                          'OfferToReceiveVideo':true }};
+  var isVideoMuted = false;
 
-// This callback function is called every time someone
-// tries to connect to the WebSocket server
-wsServer.on('request', function(request) {
-    console.log((new Date()) + ' Connection from origin ' + request.origin + '.');
-    var connection = request.accept(null, request.origin);
-    console.log(' Connection ' + connection.remoteAddress);
-    clients.push(connection);
-    
-    // This is the most important callback for us, we'll handle
-    // all messages from users here.
-    connection.on('message', function(message) {
-        if (message.type === 'utf8') {
-            // process WebSocket message
-            console.log((new Date()) + ' Received Message ' + message.utf8Data);
-            // broadcast message to all connected clients
-            clients.forEach(function (outputConnection) {
-                if (outputConnection != connection) {
-                  outputConnection.send(message.utf8Data, sendCallback);
-                }
-            });
-        }
-    });
-    
-    connection.on('close', function(connection) {
-        // close user connection
-        console.log((new Date()) + " Peer disconnected.");        
-    });
-});
+  // get the local video up
+  function startVideo() {
+      navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || window.navigator.mozGetUserMedia || navigator.msGetUserMedia;
+      window.URL = window.URL || window.webkitURL;
+
+      navigator.getUserMedia({video: true, audio: true}, successCallback, errorCallback);
+      function successCallback(stream) {
+          localStream = stream;
+          if (sourcevid.mozSrcObject) {
+            sourcevid.mozSrcObject = stream;
+            sourcevid.play();
+          } else {
+            try {
+              sourcevid.src = window.URL.createObjectURL(stream);
+              sourcevid.play();
+            } catch(e) {
+              console.log("Error setting video src: ", e);
+            }
+          }
+      }
+      function errorCallback(error) {
+          console.error('An error occurred: [CODE ' + error.code + ']');
+          return;
+      }
+  }
+
+  // stop local video
+  function stopVideo() {
+    if (sourcevid.mozSrcObject) {
+      sourcevid.mozSrcObject.stop();
+      sourcevid.src = null;
+    } else {
+      sourcevid.src = "";
+      localStream.stop();
+    }
+  }
+
+  // send SDP via socket connection
+  function setLocalAndSendMessage(sessionDescription) {
+    peerConn.setLocalDescription(sessionDescription);
+    console.log("Sending: SDP");
+    console.log(sessionDescription);
+    socket.json.send(sessionDescription);
+  }
+
+  function createOfferFailed() {
+    console.log("Create Answer failed");
+  }
+
+  // start the connection upon user request
+  function connect() {
+    if (!started && localStream && channelReady) {
+      createPeerConnection();
+      started = true;
+      peerConn.createOffer(setLocalAndSendMessage, createOfferFailed, mediaConstraints);
+    } else {
+      alert("Local stream not running yet - try again.");
+    }
+  }
+
+  // stop the connection upon user request
+  function hangUp() {
+    console.log("Hang up.");    
+    socket.json.send({type: "bye"});
+    stop();
+  }
+
+  function stop() {
+    peerConn.close();
+    peerConn = null;
+    started = false;    
+  }
+
+  // socket: channel connected
+  socket.on('connect', onChannelOpened)
+        .on('message', onMessage);
+
+  function onChannelOpened(evt) {
+    console.log('Channel opened.');
+    channelReady = true;
+  }
+
+  function createAnswerFailed() {
+    console.log("Create Answer failed");
+  }
+  // socket: accept connection request
+  function onMessage(evt) {
+    if (evt.type === 'offer') {
+      console.log("Received offer...")
+      if (!started) {
+        createPeerConnection();
+        started = true;
+      }
+      console.log('Creating remote session description...' );
+      peerConn.setRemoteDescription(new RTCSessionDescription(evt));
+      console.log('Sending answer...');
+      peerConn.createAnswer(setLocalAndSendMessage, createAnswerFailed, mediaConstraints);
+
+    } else if (evt.type === 'answer' && started) {
+      console.log('Received answer...');
+      console.log('Setting remote session description...' );
+      peerConn.setRemoteDescription(new RTCSessionDescription(evt));
+
+    } else if (evt.type === 'candidate' && started) {
+      console.log('Received ICE candidate...');
+      var candidate = new RTCIceCandidate({sdpMLineIndex:evt.sdpMLineIndex, sdpMid:evt.sdpMid, candidate:evt.candidate});
+      console.log(candidate);
+      peerConn.addIceCandidate(candidate);
+
+    } else if (evt.type === 'bye' && started) {
+      console.log("Received bye");
+      stop();
+    }
+  }
+
+  function createPeerConnection() {
+    console.log("Creating peer connection");
+    RTCPeerConnection = webkitRTCPeerConnection || mozRTCPeerConnection;
+    var pc_config = {"iceServers":[]};
+    try {
+      peerConn = new RTCPeerConnection(pc_config);
+    } catch (e) {
+      console.log("Failed to create PeerConnection, exception: " + e.message);
+    }
+    // send any ice candidates to the other peer
+    peerConn.onicecandidate = function (evt) {
+      if (event.candidate) {
+        console.log('Sending ICE candidate...');
+        console.log(evt.candidate);
+        socket.json.send({type: "candidate",
+                          sdpMLineIndex: evt.candidate.sdpMLineIndex,
+                          sdpMid: evt.candidate.sdpMid,
+                          candidate: evt.candidate.candidate});
+      } else {
+        console.log("End of candidates.");
+      }
+    };
+    console.log('Adding local stream...');
+    peerConn.addStream(localStream);
+
+    peerConn.addEventListener("addstream", onRemoteStreamAdded, false);
+    peerConn.addEventListener("removestream", onRemoteStreamRemoved, false)
+
+    // when remote adds a stream, hand it on to the local video element
+    function onRemoteStreamAdded(event) {
+      console.log("Added remote stream");
+      remotevid.src = window.URL.createObjectURL(event.stream);
+    }
+
+    // when remote removes a stream, remove it from the local video element
+    function onRemoteStreamRemoved(event) {
+      console.log("Remove remote stream");
+      remotevid.src = "";
+    }
+  }
+  </script>
+</body>
+</html>
