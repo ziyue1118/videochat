@@ -1,11 +1,11 @@
-var socket = io.connect("planner.moonlyt.com:5001");
+//var socket = io.connect("planner.moonlyt.com:5001");
 
 var localVideo = document.getElementById('localVideo');
 var remoteVideo = document.getElementById('remoteVideo');
 var miniVideo = document.getElementById('miniVideo');
 var container = document.getElementById('videoContainer');
 
-var mediaConstraints = {"video": true};
+var mediaConstraints = { "video": true };
 var PeerConnection = window.PeerConnection || window.webkitPeerConnection00 || window.webkitRTCPeerConnection
 || window.mozPeerConnection00 || window.mozRTCPeerConnection;
 navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;

@@ -1,8 +1,8 @@
 var port = process.env.PORT || 5001;
 var app = require('express')();
 var server = require('http').createServer(app);
-var io = require('socket.io').listen(server);
-//var webRTC = require('webrtc.io').listen(server);
+//var io = require('socket.io').listen(server);
+var webRTC = require('webrtc.io').listen(server);
 
 console.log("listening on port " + port);
 server.listen(port);
@@ -33,25 +33,25 @@ app.get('/service.js', function(req, res){
 app.get('/adapter.js', function(req, res){
     res.sendfile(__dirname + '/adapter.js');
 });
-io.sockets.on('connection', function(socket){
+// io.sockets.on('connection', function(socket){
 
-    socket.on('message', function(message) {
-        console.log('Received Message, broadcasting: ' + message);
-        socket.broadcast.emit('message', message);
-    });
-    socket.on('disconnect', function() {
+//     socket.on('message', function(message) {
+//         console.log('Received Message, broadcasting: ' + message);
+//         socket.broadcast.emit('message', message);
+//     });
+//     socket.on('disconnect', function() {
     
-        console.log("socket disconnected.");
+//         console.log("socket disconnected.");
      
-    });
+//     });
+// });
+
+webRTC.rtc.on('connect', function(rtc) {
+  //Client connected
+  console.log('rtc connect');
 });
 
-// webRTC.rtc.on('connect', function(rtc) {
-//   //Client connected
-//   console.log('rtc connect');
-// });
-
-// webRTC.rtc.on('disconnect', function(rtc) {
-//   //Client disconnect 
-//   console.log('rtc disconnect');
-// });
+webRTC.rtc.on('disconnect', function(rtc) {
+  //Client disconnect 
+  console.log('rtc disconnect');
+});
