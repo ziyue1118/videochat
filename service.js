@@ -1,4 +1,4 @@
-var socket = io.connect("http://localhost:5001");
+var socket = io.connect("planner.moonlyt.com:5001");
 
 var localVideo = document.getElementById('localVideo');
 var remoteVideo = document.getElementById('remoteVideo');
