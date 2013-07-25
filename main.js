@@ -35,13 +35,13 @@ if (PeerConnection){
       console.log('remove ' + data);
 
   });
-  container.addEventListener('dblclick', enterFullScreen);
-  localVideo.addEventListener('loadedmetadata', function(){resize();});
+ // container.addEventListener('dblclick', enterFullScreen);
+//localVideo.addEventListener('loadedmetadata', function(){resize();});
 
 
 function transitionToActive() {
     remoteVideo.style.opacity = 1;
-    resize();
+   
     setTimeout(function() { 
     localVideo.src = '';
     localVideo.style.opacity = 0;
