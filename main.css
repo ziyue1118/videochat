@@ -3,15 +3,17 @@
 	position: absolute;
 	margin: 0px auto;
 	/*-webkit-perspective: 1000;*/
-	width: 	522px;
-	height: 390px;
-	left: 	360px;
-	top: 	0px;
+	width: 	400px;
+	height: 250px;
+	
 
 }
 #local {
 	position: absolute;
 	width: 100%;
+	left: 432px;
+	top: 0px;
+
 	/*-webkit-transform: scale(-1, 1);*/
 	/*-webkit-backface-visibility: hidden;*/
 }
@@ -35,7 +37,7 @@
 #localVideo {
 	width: 100%;
 	opacity: 0;
-	/*-moz-transition-property: opacity;
+		/*-moz-transition-property: opacity;
 	-moz-transition-duration: 1s;
 	-webkit-transition-property: opacity;
 	-webkit-transition-duration: 1s;*/

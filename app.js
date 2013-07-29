@@ -33,6 +33,10 @@ app.get('/service.js', function(req, res){
 app.get('/adapter.js', function(req, res){
     res.sendfile(__dirname + '/adapter.js');
 });
+
+app.get('/multi.js', function(req, res){
+    res.sendfile(__dirname + '/multi.js');
+});
 // io.sockets.on('connection', function(socket){
 
 //     socket.on('message', function(message) {
