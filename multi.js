@@ -4,18 +4,24 @@ var localVideo  = document.getElementById('localVideo');
 var remoteVideo = document.getElementById('remoteVideo');
 var container   = document.getElementById('videoContainer');
 var mediaConstraints = {"video": { mandatory: {
-      minWidth: 1280,
+      minWidth:  1280,
       minHeight: 720
     }}, "audio": true };
-
+var socket = io.connect("http://localhost:5001");
 
 var remoteVideos = [];
 var localVideoSource;
 
+
+
+socket.on('connect', function(){
+  console.log("socket connected!");
+});
+
 function cloneVideo(divId, socketId) {
   var video = document.getElementById(divId);
   var clone = video.cloneNode(false);
-  clone.id = "remote" + socketId; 
+  clone.id  = "remote" + socketId; 
   document.getElementById('remote').appendChild(clone);
   remoteVideos.push(clone);
   return clone; 
@@ -66,6 +72,10 @@ if (PeerConnection){
     rtc.createStream(mediaConstraints, function(stream){
     // get local stream for manipulation
     rtc.attachStream(stream, 'localVideo');
+    var clone = cloneVideo('remoteVideo', 'local');
+    rtc.attachStream(stream, clone.id);
+    divideVideos();
+    document.getElementById('remotelocal').style.opacity = 0;
     localVideoSource = localVideo.src;
     localVideo.style.opacity = 1;
     localVideo.style.webkitTransform = 'rotateY(180deg)';
@@ -84,7 +94,7 @@ if (PeerConnection){
       var clone = cloneVideo('remoteVideo', socketId);
       rtc.attachStream(stream, clone.id);
       divideVideos();
-
+      document.getElementById('remotelocal').style.opacity = 1;
       if (stream || remoteVideo.currentTime){
         transitionToActive();
       }
@@ -95,9 +105,9 @@ if (PeerConnection){
 
   rtc.on('disconnect stream', function(data) {
       console.log('remove' + data);
-   
       removeVideo(data);
-      if (remoteVideos.length === 0){
+      if (remoteVideos.length === 1){
+          document.getElementById('remotelocal').style.opacity = 0;
           transitionToStop();
       } 
   });
