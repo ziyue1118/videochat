@@ -19,6 +19,7 @@ var remoteStream;
 var turnReady;
 var room = 'haha';
 var localVideoSource;
+var msgStore = [];
 // var pc_config = webrtcDetectedBrowser === 'firefox' ? 
 // {'iceServers':[{'url':'stun:23.21.150.121'}]} : 
 // {'iceServers': [{'url': 'stun:stun.l.google.com:19302'}]};
@@ -32,24 +33,38 @@ var mediaConstraints = {video: true, audio: true};
 
 socket.emit('joinroom', room);
 
-socket.on('create', function (room){
+socket.on('create', function (){
+	console.log("I AM INITIATOR");
 	isInitiator = true; 
 });
 
-socket.on('add',function (room){
+socket.on('add',function (){
+	console.log("A PEER JOINED");
 	isChannelReady = true;
 });
 
+socket.on('destroy', function (){
+	console.log("A PEER LEFT");
+	isChannelReady = false;
+});
 
-socket.on('message', function (message) {
+socket.on('message',function (message){
 	console.log('Received message:', message);
+	msgStore.push(message);
+	if (isStarted || message === 'got user media'){
+		processMessage(message); 
+	}
+});
+
+function processMessage(message) {
 	
 	if (message === 'got user media') {
-		// maybeStart();
+		 maybeStart();
 	} else 
 	if (message.type === 'offer') {
 		if (!isInitiator && !isStarted) {
-			maybeStart();	     
+			console.log("not INITIATOR not started");
+			maybeStart();
 		}
 		pc.setRemoteDescription(new RTCSessionDescription(message));
 		doAnswer();
@@ -66,12 +81,12 @@ socket.on('message', function (message) {
 		transitionToStop();
 		stop();
 		isInitiator = false;
-
 	}
-});
+};
 
 function sendMessage(message) {
 	console.log("Sending message: ", message);
+
 	socket.emit('message', message);
 }
 
@@ -90,19 +105,19 @@ function successCallback(stream) {
     miniVideo.style.transform = 'rotateY(180deg)';
     
     sendMessage('got user media');
-	if (isInitiator) {
-		maybeStart(); 
-	}
+	maybeStart(); 
+
+
 }
 
 function errorCallback(error) {
 	console.log('An error occurred: [CODE ' + error.code + ']');
 }
 //An event that fires when a window is about to unload its resources.
-window.onbeforeunload = function(e){
-	sendMessage({type: 'bye'});
+// window.onbeforeunload = function(e){
+// 	sendMessage({type: 'bye'});
 
-}
+// }
 
 
 function setLocalAndSendMessage(sessionDescription) {
@@ -117,11 +132,13 @@ function maybeStart(){
 	if (!isStarted && localStream && isChannelReady){
    		createPeerConnection(localStream);
    		//pc.addStream(localStream);
-        isStarted = true;
+		isStarted = true;
         if (isInitiator) {
         	doCall();
         }
-		
+		else {
+			doCallee();
+		}
 	}
 }
 
@@ -130,12 +147,20 @@ function doCall() {
   // constraints = mergeConstraints(constraints, sdpConstraints);
   // console.log('Sending offer to peer, with constraints: \n' +
   //   '  \'' + JSON.stringify(constraints) + '\'.');
-  pc.createOffer(setLocalAndSendMessage, null, sdpConstraints);
+  console.log("Creating a offer to peer");
+  pc.createOffer(setLocalAndSendMessage);
+}
+
+function doCallee() {
+    
+    while (msgStore.length > 0) {
+      processMessage(msgStore.shift());
+    }
 }
 
 function doAnswer() {
   console.log('Sending answer to peer.');
-  pc.createAnswer(setLocalAndSendMessage, null, sdpConstraints);
+  pc.createAnswer(setLocalAndSendMessage);
 }
 
 function createPeerConnection(localStream) {
@@ -180,9 +205,10 @@ function createPeerConnection(localStream) {
 // }
 
 function stop() {
-  isStarted = false;
-  pc.close();
-  pc = null;
+	  isStarted = false;
+	  msgStore = [];
+	  pc.close();
+	  pc = null;
 }
 
 function transitionToActive(){
@@ -201,7 +227,26 @@ function transitionToStop(){
 		remoteVideo.style.opacity = 0;
 }
 
-
+ function onChannelMessage(message) {
+   
+    // Since the turn response is async and also GAE might disorder the
+    // Message delivery due to possible datastore query at server side,
+    // So callee needs to cache messages before peerConnection is created.
+    if (!initiator && !started) {
+      if (msg.type === 'offer') {
+        // Add offer to the beginning of msgQueue, since we can't handle
+        // Early candidates before offer at present.
+        msgQueue.unshift(msg);
+        // Callee creates PeerConnection
+        signalingReady = true;
+        maybeStart();
+      } else {
+        msgQueue.push(msg);
+      }
+    } else {
+      processSignalingMessage(msg);
+    }
+  }
 /////////////////////////////////////////////////////////////////////////
 // function preferOpus(sdp) {
 //   var sdpLines = sdp.split('\r\n');
