@@ -80,7 +80,7 @@ function processMessage(message) {
 		console.log("goodbye!");
 		transitionToStop();
 		stop();
-		isInitiator = false;
+		//isInitiator = false;
 	}
 };
 
