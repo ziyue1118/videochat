@@ -1,14 +1,37 @@
-var socket = io.connect("http://planner.moonlyt.com:5001");
+var socket = io.connect("http://localhost:5001");
 
 var localVideo = document.getElementById('localVideo');
 var remoteVideo = document.getElementById('remoteVideo');
 var miniVideo = document.getElementById('miniVideo');
 var container = document.getElementById('videoContainer');
 
-var PeerConnection = window.PeerConnection || window.webkitPeerConnection00 || window.webkitRTCPeerConnection
-|| window.mozPeerConnection00 || window.mozRTCPeerConnection;
-navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
-var URL = window.URL || window.webkitURL || window.msURL || window.oURL;
+// var PeerConnection = window.PeerConnection || window.webkitPeerConnection00 || window.webkitRTCPeerConnection
+// || window.mozPeerConnection00 || window.mozRTCPeerConnection;
+// navigator.getUserMedia = navigator.getUserMedia || navigator.mozGetUserMedia || navigator.webkitGetUserMedia || navigator.msGetUserMedia;
+// var URL = window.URL || window.webkitURL || window.msURL || window.oURL;
+// var IceCandidate = window.IceCandidate || window.mozRTCIceCandidate || window.RTCIceCandidate;
+// var SessionDescription = window.SessionDescription || window.mozRTCSessionDescription || window.RTCSessionDescription;
+var PeerConnection = null;
+var getUserMedia = null;
+var webrtcDetectedBrowser = null;
+
+if (navigator.mozGetUserMedia){
+	console.log("This is firefox");
+	webrtcDetectedBrowser = "firefox";
+	PeerConnection = mozRTCPeerConnection;
+	SessionDescription = mozRTCSessionDescription;
+	IceCandidate = mozRTCIceCandidate;
+	getUserMedia = navigator.mozGetUserMedia.bind(navigator);
+
+}
+else if (navigator.webkitGetUserMedia) {
+	console.log("This is chrome");
+	webrtcDetectedBrowser = "chrome";
+	PeerConnection = webkitRTCPeerConnection;
+	SessionDescription = RTCSessionDescription;
+	IceCandidate = RTCIceCandidate;
+	getUserMedia = navigator.webkitGetUserMedia.bind(navigator);
+}
 
 var isChannelReady; 
 var isInitiator;
@@ -24,9 +47,15 @@ var msgStore = [];
 // {'iceServers':[{'url':'stun:23.21.150.121'}]} : 
 // {'iceServers': [{'url': 'stun:stun.l.google.com:19302'}]};
 
-var pcConfig = {'iceServers': [{'url': 'stun:stun.l.google.com:19302'}]};
-var pcConstraints = {'optional':[]};
-var sdpConstraints = {'mandatory': {'OfferToReceiveAudio':true, 'OfferToReceiveVideo':true }};
+
+//var pcConfig = {'iceServers': [{'url':'stun:23.21.150.121'}]};
+var pcConfig = webrtcDetectedBrowser == 'chrome' ? 
+{'iceServers': [{"url":"stun:stun.l.google.com:19302"}]}:
+{'iceServers': [{"url":"stun:stun.services.mozilla.com"}]};
+var pcConstraints = webrtcDetectedBrowser == 'chrome' ?  { 'optional': [{"DtlsSrtpKeyAgreement": true}]} : {"optional":[]};
+
+var sdpConstraints = webrtcDetectedBrowser == 'chrome' ? {'mandatory': {'OfferToReceiveAudio':true, 'OfferToReceiveVideo':true }}: 
+{'mandatory': {'OfferToReceiveAudio':true, 'OfferToReceiveVideo':true, 'MozDontOfferDataChannel': true }};
 var mediaConstraints = {video: true, audio: true};
 
 
@@ -49,7 +78,7 @@ socket.on('destroy', function (){
 });
 
 socket.on('message',function (message){
-	console.log('Received message:', message);
+	//console.log(message);
 	msgStore.push(message);
 	if (isStarted || message === 'got user media'){
 		processMessage(message); 
@@ -66,13 +95,15 @@ function processMessage(message) {
 			console.log("not INITIATOR not started");
 			maybeStart();
 		}
-		pc.setRemoteDescription(new RTCSessionDescription(message));
+		//message.sdp = message.sdp.replace(/(a=crypto:)(.*?)(\r\n)/g, '');
+		pc.setRemoteDescription(new SessionDescription(message));
 		doAnswer();
 
 	} else if (message.type === 'answer' && isStarted) {
-		pc.setRemoteDescription(new RTCSessionDescription(message));
+		//message.sdp = message.sdp.replace(/(a=crypto:)(.*?)(\r\n)/g, '');
+		pc.setRemoteDescription(new SessionDescription(message));
 	} else if (message.type === 'candidate' && isStarted) {
-		var candidate = new RTCIceCandidate({sdpMLineIndex: message.label,
+		var candidate = new IceCandidate({sdpMLineIndex: message.label,
 			candidate: message.candidate});
 		pc.addIceCandidate(candidate);
 
@@ -90,7 +121,7 @@ function sendMessage(message) {
 	socket.emit('message', message);
 }
 
-navigator.getUserMedia(mediaConstraints, successCallback, errorCallback);
+getUserMedia(mediaConstraints, successCallback, errorCallback);
 
 function successCallback(stream) {
 	localStream = stream;
@@ -120,13 +151,27 @@ function errorCallback(error) {
 // }
 
 
-function setLocalAndSendMessage(sessionDescription) {
+function setLocalOfferAndSendMessage(sessionDescription) {
   // Set Opus as the preferred codec in SDP if Opus is present.
   //sessionDescription.sdp = preferOpus(sessionDescription.sdp);
+  console.log(sessionDescription);
+  //sessionDescription.sdp = webrtcDetectedBrowser == 'firefox' ? getInteropSDP(sessionDescription.sdp) : sessionDescription.sdp
   pc.setLocalDescription(sessionDescription);
   sendMessage(sessionDescription);
 }
 
+function setLocalAnswerAndSendMessage(sessionDescription) {
+	console.log(sessionDescription);
+	pc.setLocalDescription(sessionDescription);
+	sendMessage(sessionDescription);
+}
+
+function getInteropSDP(sdp) {
+    var inline = 'a=crypto:1 AES_CM_128_HMAC_SHA1_80 inline:ABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890abc\r\nc=IN';
+    sdp = sdp.indexOf('a=crypto') == -1 ? sdp.replace(/c=IN/g, inline) : sdp;
+
+    return sdp;
+}
 
 function maybeStart(){
 	if (!isStarted && localStream && isChannelReady){
@@ -148,7 +193,7 @@ function doCall() {
   // console.log('Sending offer to peer, with constraints: \n' +
   //   '  \'' + JSON.stringify(constraints) + '\'.');
   console.log("Creating a offer to peer");
-  pc.createOffer(setLocalAndSendMessage);
+  pc.createOffer(setLocalOfferAndSendMessage, null, {});
 }
 
 function doCallee() {
@@ -160,13 +205,15 @@ function doCallee() {
 
 function doAnswer() {
   console.log('Sending answer to peer.');
-  pc.createAnswer(setLocalAndSendMessage);
+  pc.createAnswer(setLocalAnswerAndSendMessage, null, {});
 }
 
 function createPeerConnection(localStream) {
 	console.log("Creating peer connection");
 	pc = new PeerConnection(pcConfig, pcConstraints);
-
+	      console.log('Created RTCPeerConnnection with:\n' +
+                  '  config: \'' + JSON.stringify(pcConfig) + '\';\n' +
+                  '  constraints: \'' + JSON.stringify(pcConstraints) + '\'.');
 	pc.onicecandidate = function(event) {
 		if (event.candidate) {
 			sendMessage({type: "candidate",
@@ -227,97 +274,78 @@ function transitionToStop(){
 		remoteVideo.style.opacity = 0;
 }
 
- function onChannelMessage(message) {
-   
-    // Since the turn response is async and also GAE might disorder the
-    // Message delivery due to possible datastore query at server side,
-    // So callee needs to cache messages before peerConnection is created.
-    if (!initiator && !started) {
-      if (msg.type === 'offer') {
-        // Add offer to the beginning of msgQueue, since we can't handle
-        // Early candidates before offer at present.
-        msgQueue.unshift(msg);
-        // Callee creates PeerConnection
-        signalingReady = true;
-        maybeStart();
-      } else {
-        msgQueue.push(msg);
+
+/////////////////////////////////////////////////////////////////////////
+function preferOpus(sdp) {
+  var sdpLines = sdp.split('\r\n');
+  var mLineIndex;
+  // Search for m line.
+  for (var i = 0; i < sdpLines.length; i++) {
+      if (sdpLines[i].search('m=audio') !== -1) {
+        mLineIndex = i;
+        break;
       }
-    } else {
-      processSignalingMessage(msg);
+  }
+  if (mLineIndex === null) {
+    return sdp;
+  }
+
+  // If Opus is available, set it as the default in m line.
+  for (i = 0; i < sdpLines.length; i++) {
+    if (sdpLines[i].search('opus/48000') !== -1) {
+      var opusPayload = extractSdp(sdpLines[i], /:(\d+) opus\/48000/i);
+      if (opusPayload) {
+        sdpLines[mLineIndex] = setDefaultCodec(sdpLines[mLineIndex], opusPayload);
+      }
+      break;
     }
   }
-/////////////////////////////////////////////////////////////////////////
-// function preferOpus(sdp) {
-//   var sdpLines = sdp.split('\r\n');
-//   var mLineIndex;
-//   // Search for m line.
-//   for (var i = 0; i < sdpLines.length; i++) {
-//       if (sdpLines[i].search('m=audio') !== -1) {
-//         mLineIndex = i;
-//         break;
-//       }
-//   }
-//   if (mLineIndex === null) {
-//     return sdp;
-//   }
 
-//   // If Opus is available, set it as the default in m line.
-//   for (i = 0; i < sdpLines.length; i++) {
-//     if (sdpLines[i].search('opus/48000') !== -1) {
-//       var opusPayload = extractSdp(sdpLines[i], /:(\d+) opus\/48000/i);
-//       if (opusPayload) {
-//         sdpLines[mLineIndex] = setDefaultCodec(sdpLines[mLineIndex], opusPayload);
-//       }
-//       break;
-//     }
-//   }
+  // Remove CN in m line and sdp.
+  sdpLines = removeCN(sdpLines, mLineIndex);
 
-//   // Remove CN in m line and sdp.
-//   sdpLines = removeCN(sdpLines, mLineIndex);
+  sdp = sdpLines.join('\r\n');
+  return sdp;
+}
 
-//   sdp = sdpLines.join('\r\n');
-//   return sdp;
-// }
+function extractSdp(sdpLine, pattern) {
+  var result = sdpLine.match(pattern);
+  return result && result.length === 2 ? result[1] : null;
+}
 
-// function extractSdp(sdpLine, pattern) {
-//   var result = sdpLine.match(pattern);
-//   return result && result.length === 2 ? result[1] : null;
-// }
+//Set the selected codec to the first in m line.
+function setDefaultCodec(mLine, payload) {
+  var elements = mLine.split(' ');
+  var newLine = [];
+  var index = 0;
+  for (var i = 0; i < elements.length; i++) {
+    if (index === 3) { // Format of media starts from the fourth.
+      newLine[index++] = payload; // Put target payload to the first.
+    }
+    if (elements[i] !== payload) {
+      newLine[index++] = elements[i];
+    }
+  }
+  return newLine.join(' ');
+}
 
-// //Set the selected codec to the first in m line.
-// function setDefaultCodec(mLine, payload) {
-//   var elements = mLine.split(' ');
-//   var newLine = [];
-//   var index = 0;
-//   for (var i = 0; i < elements.length; i++) {
-//     if (index === 3) { // Format of media starts from the fourth.
-//       newLine[index++] = payload; // Put target payload to the first.
-//     }
-//     if (elements[i] !== payload) {
-//       newLine[index++] = elements[i];
-//     }
-//   }
-//   return newLine.join(' ');
-// }
+//Strip CN from sdp before CN constraints is ready.
+function removeCN(sdpLines, mLineIndex) {
+  var mLineElements = sdpLines[mLineIndex].split(' ');
+  // Scan from end for the convenience of removing an item.
+  for (var i = sdpLines.length-1; i >= 0; i--) {
+    var payload = extractSdp(sdpLines[i], /a=rtpmap:(\d+) CN\/\d+/i);
+    if (payload) {
+      var cnPos = mLineElements.indexOf(payload);
+      if (cnPos !== -1) {
+        // Remove CN payload from m line.
+        mLineElements.splice(cnPos, 1);
+      }
+      // Remove CN line in sdp
+      sdpLines.splice(i, 1);
+    }
+  }
 
-// //Strip CN from sdp before CN constraints is ready.
-// function removeCN(sdpLines, mLineIndex) {
-//   var mLineElements = sdpLines[mLineIndex].split(' ');
-//   // Scan from end for the convenience of removing an item.
-//   for (var i = sdpLines.length-1; i >= 0; i--) {
-//     var payload = extractSdp(sdpLines[i], /a=rtpmap:(\d+) CN\/\d+/i);
-//     if (payload) {
-//       var cnPos = mLineElements.indexOf(payload);
-//       if (cnPos !== -1) {
-//         // Remove CN payload from m line.
-//         mLineElements.splice(cnPos, 1);
-//       }
-//       // Remove CN line in sdp
-//       sdpLines.splice(i, 1);
-//     }
-//   }
-
-//   sdpLines[mLineIndex] = mLineElements.join(' ');
-//   return sdpLines;
-// }
+  sdpLines[mLineIndex] = mLineElements.join(' ');
+  return sdpLines;
+}
