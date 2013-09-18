@@ -60,7 +60,7 @@ io.sockets.on('connection', function(socket){
     })
 
     socket.on('message', function(message) {
-        socket.broadcast.emit('message', message);
+        socket.broadcast.to(roomId).emit('message', message);
     });
    
   

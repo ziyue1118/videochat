@@ -1,4 +1,4 @@
-var socket = io.connect("http://planner.moonlyt.com:5001");
+var socket = io.connect("http://localhost:5001");
 
 var localVideo = document.getElementById('localVideo');
 var remoteVideo = document.getElementById('remoteVideo');
@@ -50,7 +50,7 @@ var msgStore = [];
 
 //var pcConfig = {'iceServers': [{'url':'stun:23.21.150.121'}]};
 var pcConfig = webrtcDetectedBrowser == 'chrome' ? 
-{'iceServers': [{"url":"stun:stun.l.google.com:19302"}]}:
+{'iceServers': [{'url':"turn:ziyue@192.168.0.20", "credential":"moonlyt"}]}:
 {'iceServers': [{"url":"stun:stun.services.mozilla.com"}]};
 var pcConstraints = webrtcDetectedBrowser == 'chrome' ?  { 'optional': [{"DtlsSrtpKeyAgreement": true}]} : {"optional":[]};
 
@@ -60,7 +60,7 @@ var mediaConstraints = {video: true, audio: true};
 
 
 
-socket.emit('joinroom', room);
+//socket.emit('joinroom', room);
 
 socket.on('create', function (){
 	console.log("I AM INITIATOR");
@@ -126,6 +126,7 @@ getUserMedia(mediaConstraints, successCallback, errorCallback);
 function successCallback(stream) {
 	localStream = stream;
 	localVideo.src = URL.createObjectURL(stream);
+	console.log(stream);
 	localVideoSource = localVideo.src;
 	miniVideo.src = localVideo.src;
 
@@ -143,6 +144,7 @@ function successCallback(stream) {
 
 function errorCallback(error) {
 	console.log('An error occurred: [CODE ' + error.code + ']');
+	
 }
 //An event that fires when a window is about to unload its resources.
 // window.onbeforeunload = function(e){
@@ -175,7 +177,11 @@ function getInteropSDP(sdp) {
 
 function maybeStart(){
 	if (!isStarted && localStream && isChannelReady){
-   		createPeerConnection(localStream);
+   		console.log("*****MAYBESTART*****");
+   		console.log("localstream",localStream);
+   		console.log("isStarted", isStarted);
+   		console.log("isChannelReady",isChannelReady);
+		createPeerConnection(localStream);
    		//pc.addStream(localStream);
 		isStarted = true;
         if (isInitiator) {
@@ -199,6 +205,7 @@ function doCall() {
 function doCallee() {
     
     while (msgStore.length > 0) {
+      console.log("nima");
       processMessage(msgStore.shift());
     }
 }
@@ -261,7 +268,7 @@ function stop() {
 function transitionToActive(){
 	    remoteVideo.style.opacity = 1;
 	   	setTimeout(function() { 
-	    localVideo.src = '';
+	    //localVideo.src = '';
 	    localVideo.style.opacity = 0;
 	    miniVideo.style.opacity = 1; }, 500);
 }
@@ -275,77 +282,3 @@ function transitionToStop(){
 }
 
 
-/////////////////////////////////////////////////////////////////////////
-function preferOpus(sdp) {
-  var sdpLines = sdp.split('\r\n');
-  var mLineIndex;
-  // Search for m line.
-  for (var i = 0; i < sdpLines.length; i++) {
-      if (sdpLines[i].search('m=audio') !== -1) {
-        mLineIndex = i;
-        break;
-      }
-  }
-  if (mLineIndex === null) {
-    return sdp;
-  }
-
-  // If Opus is available, set it as the default in m line.
-  for (i = 0; i < sdpLines.length; i++) {
-    if (sdpLines[i].search('opus/48000') !== -1) {
-      var opusPayload = extractSdp(sdpLines[i], /:(\d+) opus\/48000/i);
-      if (opusPayload) {
-        sdpLines[mLineIndex] = setDefaultCodec(sdpLines[mLineIndex], opusPayload);
-      }
-      break;
-    }
-  }
-
-  // Remove CN in m line and sdp.
-  sdpLines = removeCN(sdpLines, mLineIndex);
-
-  sdp = sdpLines.join('\r\n');
-  return sdp;
-}
-
-function extractSdp(sdpLine, pattern) {
-  var result = sdpLine.match(pattern);
-  return result && result.length === 2 ? result[1] : null;
-}
-
-//Set the selected codec to the first in m line.
-function setDefaultCodec(mLine, payload) {
-  var elements = mLine.split(' ');
-  var newLine = [];
-  var index = 0;
-  for (var i = 0; i < elements.length; i++) {
-    if (index === 3) { // Format of media starts from the fourth.
-      newLine[index++] = payload; // Put target payload to the first.
-    }
-    if (elements[i] !== payload) {
-      newLine[index++] = elements[i];
-    }
-  }
-  return newLine.join(' ');
-}
-
-//Strip CN from sdp before CN constraints is ready.
-function removeCN(sdpLines, mLineIndex) {
-  var mLineElements = sdpLines[mLineIndex].split(' ');
-  // Scan from end for the convenience of removing an item.
-  for (var i = sdpLines.length-1; i >= 0; i--) {
-    var payload = extractSdp(sdpLines[i], /a=rtpmap:(\d+) CN\/\d+/i);
-    if (payload) {
-      var cnPos = mLineElements.indexOf(payload);
-      if (cnPos !== -1) {
-        // Remove CN payload from m line.
-        mLineElements.splice(cnPos, 1);
-      }
-      // Remove CN line in sdp
-      sdpLines.splice(i, 1);
-    }
-  }
-
-  sdpLines[mLineIndex] = mLineElements.join(' ');
-  return sdpLines;
-}

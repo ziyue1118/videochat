@@ -1,0 +1,40 @@
+<html>
+	<head>
+		<script src="http://static.opentok.com/webrtc/v2.0/js/TB.min.js" ></script>
+    <script src = "http://localhost:5001/socket.io/socket.io.js"></script>
+		<meta http-equiv="X-UA-Compatible" content="chrome=1">
+	</head>
+
+	<body>
+		<div id = "localVideo"></div>
+    <div id = "remoteVideo"></div>
+        <script type="text/javascript">
+          // Initialize API key, session, and token...
+          // Think of a session as a room, and a token as the key to get in to the room
+          // Sessions and tokens are generated on your server and passed down to the client
+          var apiKey = "41543542";
+          var sessionId = "2_MX40MTU0MzU0Mn4xMjcuMC4wLjF-VHVlIFNlcCAxNyAxMTozMjoxOCBQRFQgMjAxM34wLjc0OTEzNzZ-";
+          var token = "T1==cGFydG5lcl9pZD00MTU0MzU0MiZzZGtfdmVyc2lvbj10YnJ1YnktdGJyYi12MC45MS4yMDExLTAyLTE3JnNpZz02Zjg3YmU2OTVlY2I4ODMyZTQ3ZjNlOWQ1YmVmZmIyMjc0YzdjNmZhOnJvbGU9cHVibGlzaGVyJnNlc3Npb25faWQ9Ml9NWDQwTVRVME16VTBNbjR4TWpjdU1DNHdMakYtVkhWbElGTmxjQ0F4TnlBeE1Ub3pNam94T0NCUVJGUWdNakF4TTM0d0xqYzBPVEV6TnpaLSZjcmVhdGVfdGltZT0xMzc5NDQyNzM4Jm5vbmNlPTAuMjM5Nzk0MDk0NjgxMjk5ODYmZXhwaXJlX3RpbWU9MTM3OTUyOTEzNyZjb25uZWN0aW9uX2RhdGE9";
+
+          // Initialize session, set up event listeners, and connect
+          var session = TB.initSession(sessionId);
+          session.addEventListener('sessionConnected', sessionConnectedHandler);
+          //session.addEventListener("streamCreated", streamCreatedHandler);
+
+          session.connect(apiKey, token);
+        
+          // function subscribeToStreams(streams){
+          //   session.subscribe(streams[0], 'localVideo');
+          //  }
+          // function streamCreatedHandler(event) {
+          //   subscribeToStreams(event.streams);
+          // }
+          function sessionConnectedHandler(event) {
+           
+            var publisher = TB.initPublisher(apiKey, 'localVideo');
+            session.publish(publisher);
+          }
+        </script>
+
+	</body>
+</html>
